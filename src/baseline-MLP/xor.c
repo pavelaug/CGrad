@@ -29,7 +29,7 @@ float randw() { return ((rand()/(float)RAND_MAX) - 0.5f) * 0.2f; }
 
 float tan_h(float x)
 {
-  return fmax(0, x);
+  return 1.0f/(1.0f + exp(-x));
 }
 
 float forward(struct Params params, float input1, float input2)
