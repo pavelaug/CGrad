@@ -1,3 +1,4 @@
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <math.h>
@@ -8,6 +9,13 @@ struct Data {
   int x1;
   int x2;
   int y;
+};
+
+struct Gradients
+{
+  float dw1, dw2, db1;
+  float dw3, dw4, db2;
+  float dw5, dw6, db3;
 };
 
 struct Params {
@@ -31,28 +39,58 @@ float sigmoid_f(float x)
   return (1/(1 + exp(-x)));
 }
 
-float forward(struct Params params, float input1, float input2)
+float forward(struct Params params, struct Gradients *grads, float input1, float input2, float output)
 {
   
    float neuron_output_1  = (params.weight1 * input1) + (params.weight2 * input2) + params.bias1;
 
    float neuron_output_2 = (params.weight3 * input1) + (params.weight4 * input2) + params.bias2;
 
-   neuron_output_1  = sigmoid_f(neuron_output_1);
+   float a1  = sigmoid_f(neuron_output_1);
 
-   neuron_output_2  = sigmoid_f(neuron_output_2);
+   float a2  = sigmoid_f(neuron_output_2);
 
-   float pred = params.weight5 * neuron_output_1  + params.weight6 * neuron_output_2 + params.bias3;
+   float pred = params.weight5 * a1  + params.weight6 * a2 + params.bias3;
 
-   return sigmoid_f(pred);
+   pred = sigmoid_f(pred);
+   
+
+  float dL_dmse = -(output - pred);
+
+  float dL_dsig1 = pred * (1 - pred);
+
+  float dL_dw5 = a1;
+  float dL_dw6 = a2;
+
+  grads->dw5 = dL_dmse * dL_dsig1 * dL_dw5;
+  grads->dw6 = dL_dmse * dL_dsig1 * dL_dw6;
+  grads->db3 = dL_dmse * dL_dsig1;
+
+  float dL_da1 = params.weight5;
+  float dL_da2 = params.weight6;
+  
+  float dL_dsig2 = a1 * (1 - a1);    
+  float dL_dsig3 = a2 * (1 - a2);
+
+  float dl_dw1 = input1;
+  float dL_dw2 = input2;
+
+  grads->dw4 = dL_dmse * dL_dsig1 * dL_da2 * dL_dsig3 * dL_dw2;
+  grads->dw3 = dL_dmse * dL_dsig1 * dL_da2 * dL_dsig3 * dl_dw1;
+  grads->db2 = dL_dmse * dL_dsig1 * dL_da2 * dL_dsig3;
+
+  grads->dw2 = dL_dmse * dL_dsig1 * dL_da1 * dL_dsig2 * dL_dw2;
+  grads->dw1 = dL_dmse * dL_dsig1 * dL_da1 * dL_dsig2 * dl_dw1;
+  grads->db1 = dL_dmse * dL_dsig1 * dL_da1 * dL_dsig2;
+   return pred;
 }
 
-float mse(struct Params params,  struct Data arr[4])
+float mse(struct Params params, struct Gradients * grads, struct Data arr[4])
 {
   float temp = 0;
   for(int i = 0; i < 4; i++)
   {
-     float pred = forward(params, arr[i].x1, arr[i].x2);
+     float pred = forward(params, grads,  arr[i].x1, arr[i].x2, arr[i].y);
      float tempError = arr[i].y - pred;
 
     tempError *= tempError;
@@ -63,10 +101,10 @@ float mse(struct Params params,  struct Data arr[4])
   return temp/4.0f;
 }
 
-void backward(struct Params *params, struct Data arr[4])
+void backward(struct Params *params, struct Gradients grads,  struct Data arr[4])
 {
   
- float h = 1e-3;
+  float h = 1e-3;
   float learning_rate = 1e-1;
   for(int i = 0; i < 10000*100; i++)
   {
@@ -134,7 +172,7 @@ void backward(struct Params *params, struct Data arr[4])
         // --- Update Parameters using Gradient Descent ---
         params->weight1 -= learning_rate * gradient_w1;
         params->weight2 -= learning_rate * gradient_w2;
-          params->bias1 -= learning_rate * gradient_b1;
+        params->bias1 -= learning_rate * gradient_b1;
 
         params->weight3 -= learning_rate * gradient_w3;
         params->weight4 -= learning_rate * gradient_w4;
@@ -160,7 +198,6 @@ int main(void)
   {0, 1, 1},
   {1, 1, 0}
    };
-
   struct Params params;
 
   params.weight1 = randw();
