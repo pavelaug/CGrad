@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define N 1000 * 2000
+
 struct Data {
   int x1;
   int x2;
@@ -101,88 +103,30 @@ float mse(struct Params params, struct Gradients * grads, struct Data arr[4])
   return temp/4.0f;
 }
 
-void backward(struct Params *params, struct Gradients grads,  struct Data arr[4])
+void backward(struct Params *params, struct Gradients *grads,  struct Data arr[4])
 {
   
   float h = 1e-3;
-  float learning_rate = 1e-1;
-  for(int i = 0; i < 10000*100; i++)
+  float learning_rate = 1e-5;
+  for(int i = 0; i < N; i++)
   {
-        float fa = mse(*params, arr); 
+        float fa = mse(*params, grads,  arr); 
 
-        // --- Calculate Gradients using numerical 
-        struct Params temp_params;
-        float fb; // To store the MSE with the perturbed parameter
-
-        // Gradient for weight1
-        temp_params = * params;
-        temp_params.weight1 += h;
-        fb = mse(temp_params, arr);
-        float gradient_w1 = (fb - fa) / h;
-
-        // Gradient for weight2
-        temp_params = * params;
-        temp_params.weight2 += h;
-        fb = mse(temp_params, arr);
-        float gradient_w2 = (fb - fa) / h;
-
-        // Gradient for bias1
-        temp_params = *  params;
-        temp_params.bias1 += h;
-        fb = mse(temp_params, arr);
-        float gradient_b1 = (fb - fa) / h;
-
-        // Gradient for weight3
-        temp_params = * params;
-        temp_params.weight3 += h;
-        fb = mse(temp_params, arr);
-        float gradient_w3 = (fb - fa) / h;
-
-        // Gradient for weight4
-        temp_params = * params;
-        temp_params.weight4 += h;
-        fb = mse(temp_params, arr);
-        float gradient_w4 = (fb - fa) / h;
-
-        // Gradient for bias2
-        temp_params = * params;
-        temp_params.bias2 += h;
-        fb = mse(temp_params, arr);
-        float gradient_b2 = (fb - fa) / h;
-
-        // Gradient for weight5
-        temp_params = * params;
-        temp_params.weight5 += h;
-        fb = mse(temp_params, arr);
-        float gradient_w5 = (fb - fa) / h;
-
-        // Gradient for weight6
-        temp_params = * params;
-        temp_params.weight6 += h;
-        fb = mse(temp_params, arr);
-        float gradient_w6 = (fb - fa) / h;
-
-        // Gradient for bias3 (the output layer bias)
-        temp_params = * params;
-        temp_params.bias3 += h;
-        fb = mse(temp_params, arr);
-        float gradient_b3 = (fb - fa) / h;
-
-
+    
         // --- Update Parameters using Gradient Descent ---
-        params->weight1 -= learning_rate * gradient_w1;
-        params->weight2 -= learning_rate * gradient_w2;
-        params->bias1 -= learning_rate * gradient_b1;
+        params->weight1 -= learning_rate * grads->dw1;
+        params->weight2 -= learning_rate * grads->dw2;
+        params->bias1 -= learning_rate * grads->db1;
 
-        params->weight3 -= learning_rate * gradient_w3;
-        params->weight4 -= learning_rate * gradient_w4;
-        params->bias2 -= learning_rate * gradient_b2;
+        params->weight3 -= learning_rate * grads->dw3;
+        params->weight4 -= learning_rate * grads->dw4;
+        params->bias2 -= learning_rate * grads->db2;
 
-        params->weight5 -= learning_rate * gradient_w5;
-        params->weight6 -= learning_rate * gradient_w6;
-        params->bias3 -= learning_rate * gradient_b3; 
+        params->weight5 -= learning_rate * grads->dw5;
+        params->weight6 -= learning_rate * grads->dw6;
+        params->bias3 -= learning_rate * grads->db3; 
 
-        printf("cost: %f \n", mse(*params,  arr));
+        printf("cost: %f \n", mse(*params, grads,  arr));
   }
 
 }
@@ -218,21 +162,22 @@ int main(void)
 
   params.bias3 = randw();
 
-  backward(&params, arr);  
+  struct Gradients grads;
+
+  backward(&params, &grads, arr);  
 
   for(int i = 0; i < 4; i++)
   {
-     float pred = forward(params, arr[i].x1, arr[i].x2);
+    printf("gradient %f", grads.dw1);
+     float pred = forward(params, &grads,  arr[i].x1, arr[i].x2, arr[i].y);
      printf("%d + %d = %f\n", arr[i].x1, arr[i].x2, pred); 
   }
 
-
-  float  c_a, c_b;
-
+  float  c_a, c_b, c_c;
 
   printf("Give your custom params for the model pred, input1, input2:\n");
-  scanf("%f %f", &c_a, &c_b);
+  scanf("%f %f %f", &c_a, &c_b, &c_c);
 
-  printf("Result: %f\n", forward(params, c_a, c_b));
+  printf("Result: %f\n", forward(params, &grads, c_a, c_b, c_c ));
   return 0;
 }
