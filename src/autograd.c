@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define N 1000 * 2000
+#define N 1000 * 10
 
 struct Data {
   int x1;
@@ -64,9 +64,9 @@ float forward(struct Params params, struct Gradients *grads, float input1, float
   float dL_dw5 = a1;
   float dL_dw6 = a2;
 
-  grads->dw5 = dL_dmse * dL_dsig1 * dL_dw5;
-  grads->dw6 = dL_dmse * dL_dsig1 * dL_dw6;
-  grads->db3 = dL_dmse * dL_dsig1;
+  grads->dw5 += dL_dmse * dL_dsig1 * dL_dw5;
+  grads->dw6 += dL_dmse * dL_dsig1 * dL_dw6;
+  grads->db3 += dL_dmse * dL_dsig1;
 
   float dL_da1 = params.weight5;
   float dL_da2 = params.weight6;
@@ -77,13 +77,13 @@ float forward(struct Params params, struct Gradients *grads, float input1, float
   float dl_dw1 = input1;
   float dL_dw2 = input2;
 
-  grads->dw4 = dL_dmse * dL_dsig1 * dL_da2 * dL_dsig3 * dL_dw2;
-  grads->dw3 = dL_dmse * dL_dsig1 * dL_da2 * dL_dsig3 * dl_dw1;
-  grads->db2 = dL_dmse * dL_dsig1 * dL_da2 * dL_dsig3;
+  grads->dw4 += dL_dmse * dL_dsig1 * dL_da2 * dL_dsig3 * dL_dw2;
+  grads->dw3 += dL_dmse * dL_dsig1 * dL_da2 * dL_dsig3 * dl_dw1;
+  grads->db2 += dL_dmse * dL_dsig1 * dL_da2 * dL_dsig3;
 
-  grads->dw2 = dL_dmse * dL_dsig1 * dL_da1 * dL_dsig2 * dL_dw2;
-  grads->dw1 = dL_dmse * dL_dsig1 * dL_da1 * dL_dsig2 * dl_dw1;
-  grads->db1 = dL_dmse * dL_dsig1 * dL_da1 * dL_dsig2;
+  grads->dw2 += dL_dmse * dL_dsig1 * dL_da1 * dL_dsig2 * dL_dw2;
+  grads->dw1 += dL_dmse * dL_dsig1 * dL_da1 * dL_dsig2 * dl_dw1;
+  grads->db1 += dL_dmse * dL_dsig1 * dL_da1 * dL_dsig2;
    return pred;
 }
 
@@ -103,30 +103,38 @@ float mse(struct Params params, struct Gradients * grads, struct Data arr[4])
   return temp/4.0f;
 }
 
-void backward(struct Params *params, struct Gradients *grads,  struct Data arr[4])
+void backward(struct Params *params,  struct Data arr[4])
 {
   
   float h = 1e-3;
-  float learning_rate = 1e-5;
+  float learning_rate = 1e-1;
   for(int i = 0; i < N; i++)
-  {
-        float fa = mse(*params, grads,  arr); 
+  {     struct Gradients grads;
+        grads.dw1 = 0.0f; grads.dw2 = 0.0f; grads.db1 = 0.0f;
+        grads.dw3 = 0.0f; grads.dw4 = 0.0f; grads.db2 = 0.0f;
+        grads.dw5 = 0.0f; grads.dw6 = 0.0f; grads.db3 = 0.0f;
+        for(int i = 0; i < 4; i++)
+        {
+           float pred = forward(*params, &grads,  arr[i].x1, arr[i].x2, arr[i].y);
+        }
 
-    
+    grads.dw1 /= 4.0f; grads.dw2 /= 4.0f; grads.db1 /= 4.0f;
+    grads.dw3 /= 4.0f; grads.dw4 /= 4.0f; grads.db2 /= 4.0f;
+    grads.dw5 /= 4.0f; grads.dw6 /= 4.0f; grads.db3 /= 4.0f;
         // --- Update Parameters using Gradient Descent ---
-        params->weight1 -= learning_rate * grads->dw1;
-        params->weight2 -= learning_rate * grads->dw2;
-        params->bias1 -= learning_rate * grads->db1;
+        params->weight1 -= learning_rate * grads.dw1;
+        params->weight2 -= learning_rate * grads.dw2;
+        params->bias1 -= learning_rate * grads.db1;
 
-        params->weight3 -= learning_rate * grads->dw3;
-        params->weight4 -= learning_rate * grads->dw4;
-        params->bias2 -= learning_rate * grads->db2;
+        params->weight3 -= learning_rate * grads.dw3;
+        params->weight4 -= learning_rate * grads.dw4;
+        params->bias2 -= learning_rate * grads.db2;
 
-        params->weight5 -= learning_rate * grads->dw5;
-        params->weight6 -= learning_rate * grads->dw6;
-        params->bias3 -= learning_rate * grads->db3; 
+        params->weight5 -= learning_rate * grads.dw5;
+        params->weight6 -= learning_rate * grads.dw6;
+        params->bias3 -= learning_rate * grads.db3;
 
-        printf("cost: %f \n", mse(*params, grads,  arr));
+        printf("cost: %f \n", mse(*params, &grads,  arr));
   }
 
 }
@@ -164,11 +172,10 @@ int main(void)
 
   struct Gradients grads;
 
-  backward(&params, &grads, arr);  
+  backward(&params,  arr);  
 
   for(int i = 0; i < 4; i++)
   {
-    printf("gradient %f", grads.dw1);
      float pred = forward(params, &grads,  arr[i].x1, arr[i].x2, arr[i].y);
      printf("%d + %d = %f\n", arr[i].x1, arr[i].x2, pred); 
   }
